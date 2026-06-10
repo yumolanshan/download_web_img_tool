@@ -13,7 +13,7 @@ def main() -> None:
 
     def download_task() -> None:
         try:
-            url = url_var.get().strip() or 'https://www.4kdesk.com/'
+            url = url_var.get().strip() or 'https://mikagogo.com/pc-wallpaper'
             target_count = int(count_var.get())
             if target_count < 1:
                 raise ValueError('下载数量必须是大于 0 的整数')
@@ -53,7 +53,7 @@ def main() -> None:
     root.geometry('440x260')
     root.resizable(False, False)
 
-    url_var = tk.StringVar(value='https://www.4kdesk.com/')
+    url_var = tk.StringVar(value='https://mikagogo.com/pc-wallpaper')
     count_var = tk.StringVar(value='12')
     start_page_var = tk.StringVar(value='1')
 

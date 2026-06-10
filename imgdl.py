@@ -189,7 +189,7 @@ class ImageCrawler:
                 downloaded_count += 1
             except Exception as error:
                 print(f'下载出错：{img_url} -> {error}')
-            time.sleep(0.5)
+            time.sleep(3)
 
         return downloaded_count
 
@@ -242,6 +242,6 @@ if __name__ == '__main__':
         parser.error('start-page must be >= 1')
 
     clear_screen()
-    crawler = ImageCrawler(base_url='https://www.bizhihui.com/')
+    crawler = ImageCrawler(base_url='https://mikagogo.com/pc-wallpaper')
     result = crawler.crawl_pages(args.count, start_page=args.start_page)
     print(f"本次下载完成，共下载 {result['downloaded']} 张图片。")
