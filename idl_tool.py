@@ -55,7 +55,7 @@ def main() -> None:
 
     url_var = tk.StringVar(value='https://mikagogo.com/pc-wallpaper')
     count_var = tk.StringVar(value='12')
-    start_page_var = tk.StringVar(value='1')
+    start_page_var = tk.StringVar(value='')
 
     frame = tk.Frame(root, padx=16, pady=16, bg='lightblue')
     frame.pack(fill='both', expand=True)
