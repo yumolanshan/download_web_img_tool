@@ -136,6 +136,7 @@ class ImageCrawler:
         self.total_found_callback = total_found_callback
         self.control_callback = control_callback
         self.session = self._create_session()
+        self.config.img_dir.mkdir(parents=True, exist_ok=True)
         self._last_used_timestamp: Optional[str] = None
         self._counter: int = 0
         self.total_downloaded = 0
@@ -201,41 +202,39 @@ class ImageCrawler:
             logger.error(f"获取页面失败 {url}: {e}")
             raise
 
-    def _normalize_image_url(self, src: str) -> str:
+    def _normalize_image_url(self, src: str, page_url: str) -> str:
         src = src.strip()
+        if src.startswith('//'):
+            return 'https:' + src
         src = self.THUMBNAIL_SUFFIX_RE.sub('', src)
         if src.endswith('?.'):
             src = src[:-2]
-        return src
+        return urljoin(page_url, src)
 
     def _is_image_url(self, url: str) -> bool:
         return bool(self.IMAGE_EXT_RE.search(url))
 
-    def _find_direct_image_link(self, img_tag) -> Optional[str]:
+    def _find_direct_image_link(self, img_tag, page_url: str) -> Optional[str]:
         data_orig = img_tag.get('data-original') or img_tag.get('data-src')
         if data_orig and self._is_image_url(data_orig):
-            return self._normalize_image_url(data_orig)
+            return self._normalize_image_url(data_orig, page_url)
         parent_a = img_tag.find_parent('a', href=True)
         if parent_a and self._is_image_url(parent_a['href']):
-            return self._normalize_image_url(parent_a['href'])
+            return self._normalize_image_url(parent_a['href'], page_url)
         sibling_a = img_tag.find_next_sibling('a', href=True)
         if sibling_a and self._is_image_url(sibling_a['href']):
-            return self._normalize_image_url(sibling_a['href'])
+            return self._normalize_image_url(sibling_a['href'], page_url)
         return None
 
-    def extract_image_urls(self, soup: BeautifulSoup) -> List[str]:
+    def extract_image_urls(self, soup: BeautifulSoup, page_url: str) -> List[str]:
         urls = []
-        base = self.config.base_url
         for img in soup.find_all('img'):
             src = img.get('data-original') or img.get('data-src') or img.get('src')
             if not src:
                 continue
-            if src.startswith('//'):
-                full_src = 'https:' + src
-            else:
-                full_src = urljoin(base, src)
-            direct_url = self._find_direct_image_link(img)
-            candidate = direct_url or self._normalize_image_url(full_src)
+            full_src = self._normalize_image_url(src, page_url)
+            direct_url = self._find_direct_image_link(img, page_url)
+            candidate = direct_url or full_src
             if not self._is_image_url(candidate):
                 continue
             if any(blocked in candidate.lower() for blocked in ('logo', 'avatar', 'icon')):
@@ -293,9 +292,10 @@ class ImageCrawler:
             logger.error(f"图片转换 PNG 失败: {e}")
             return image_data
 
-    def download_images(self, img_urls: List[str]) -> Tuple[int, int]:
+    def download_images(self, img_urls: List[str], referer: Optional[str] = None) -> Tuple[int, int]:
         downloaded_this = 0
         failed_this = 0
+        headers = {'Referer': referer} if referer else {}
         for img_url in img_urls:
             self._check_control()   # 每张图片前检查
             if self.state_mgr.is_url_downloaded(img_url):
@@ -306,7 +306,12 @@ class ImageCrawler:
             filepath = self.config.img_dir / filename
 
             try:
-                resp = self.session.get(img_url, timeout=self.config.request_timeout, stream=True)
+                resp = self.session.get(
+                    img_url,
+                    timeout=self.config.request_timeout,
+                    stream=True,
+                    headers=headers
+                )
                 resp.raise_for_status()
                 image_bytes = resp.content
                 if self.config.convert_to_png:
@@ -352,13 +357,13 @@ class ImageCrawler:
                 logger.info(f"正在爬取第 {pages_processed+1}/{page_limit} 页: {page_url}")
                 soup = self.fetch_page_soup(page_url)
 
-                img_urls = self.extract_image_urls(soup)
+                img_urls = self.extract_image_urls(soup, page_url)
                 self.total_found += len(img_urls)
                 if self.total_found_callback:
                     self.total_found_callback(self.total_found)
 
                 logger.info(f"第 {pages_processed+1} 页发现 {len(img_urls)} 张图片，累计发现 {self.total_found} 张")
-                d, f = self.download_images(img_urls)
+                d, f = self.download_images(img_urls, referer=page_url)
                 total_images += d
                 failed_images += f
                 pages_processed += 1
