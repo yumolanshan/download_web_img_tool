@@ -7,7 +7,7 @@ from imgdl import ImageCrawler, CrawlConfig, ControlState, format_time
 
 
 class DownloadApp:
-    DEFAULT_URL = 'https://mikagogo.com/pc-wallpaper'
+    DEFAULT_URL = 'https://www.bizhihui.com/'
     DEFAULT_PAGES = 1
     WINDOW_TITLE = '图片下载工具（按页）'
     WINDOW_SIZE = '500x480'
